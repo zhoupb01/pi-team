@@ -1,0 +1,68 @@
+#!/usr/bin/env node
+import { readFileSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { resolve, join } from 'node:path';
+import { spawn } from 'node:child_process';
+
+const help = `pi-team — 一个主助手，多位模型搭档。
+
+  pi-team [Pi 参数...]     启动团队主会话
+  pi-team --team-check     检查本地配置，不调用模型
+  pi-team --team-help      显示本说明
+
+配置：~/.pi/agent/pi-team/
+角色：~/.pi/agent/agents/gpt-*.md
+支持 PI_CODING_AGENT_DIR；其余参数原样交给 Pi。
+`;
+
+if (process.argv[2] === '--team-help') {
+  console.log(help);
+  process.exit(0);
+}
+
+try {
+  const rawDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), '.pi', 'agent');
+  const agentDir = resolve(rawDir === '~' ? homedir() : rawDir.startsWith('~/') ? join(homedir(), rawDir.slice(2)) : rawDir);
+  const teamDir = join(agentDir, 'pi-team');
+  const config = JSON.parse(readFileSync(join(teamDir, 'config.json'), 'utf8'));
+  if (typeof config.frontdeskModel !== 'string' || !config.frontdeskModel.trim()) {
+    throw new Error('config.json 缺少 frontdeskModel。');
+  }
+  const prompt = join(teamDir, 'front-desk.md');
+  for (const file of [prompt, ...['worker', 'reviewer'].map(role => join(agentDir, 'agents', `gpt-${role}.md`))]) {
+    if (!existsSync(file)) throw new Error(`缺少文件：${file}。请重新安装。`);
+  }
+  if (process.argv[2] === '--team-check') {
+    console.log(`本地配置完整。前台模型：${config.frontdeskModel}
+配置目录：${teamDir}
+模型凭证与 subagent 工具是否启用，需要在 Pi 中确认。`);
+    process.exit(0);
+  }
+  const rules = join(homedir(), '.codex', 'AGENTS.md');
+  const child = spawn('pi', [
+    '--model', config.frontdeskModel,
+    ...(existsSync(rules) ? ['--append-system-prompt', rules] : []),
+    '--append-system-prompt', prompt,
+    '--tools', '+subagent',
+    ...process.argv.slice(2),
+  ], { stdio: 'inherit', env: { ...process.env, PI_CODING_AGENT_DIR: agentDir } });
+  const forward = signal => { if (!child.killed) child.kill(signal); };
+  const onInt = () => forward('SIGINT');
+  const onTerm = () => forward('SIGTERM');
+  process.on('SIGINT', onInt);
+  process.on('SIGTERM', onTerm);
+  child.on('error', error => {
+    console.error(`pi-team: 无法启动 pi：${error.message}`);
+    process.exitCode = 1;
+  });
+  child.on('exit', (code, signal) => {
+    process.removeListener('SIGINT', onInt);
+    process.removeListener('SIGTERM', onTerm);
+    if (signal) process.kill(process.pid, signal);
+    else process.exitCode = code ?? 1;
+  });
+} catch (error) {
+  console.error(`pi-team: ${error.message}
+运行仓库中的 bash install.sh --help 查看安装方法。`);
+  process.exitCode = 1;
+}
