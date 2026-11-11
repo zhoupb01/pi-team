@@ -10,7 +10,7 @@
 新环境还会装上仓库随附的 subagent 扩展。你不用额外跑 `npm install`。
 
 文件内容相同，可以重复安装。已有文件内容不同，安装器会在写入前停止。
-这也包括你原来就有的同名 `gpt-worker.md` 和 `gpt-reviewer.md`。
+这也包括你原来就有的同名 `gpt-worker.md`、`gpt-reviewer.md` 和 `gpt-scout.md`。
 加 `--force` 后，会先在每个要覆盖的文件旁备份，再写入新内容。
 备份名是原文件名加 `.bak-时间戳-进程号`。已有 subagent 扩展始终保留。
 
@@ -33,7 +33,7 @@ bash install.sh \
   --skip-subagent
 ```
 
-这里省略了 `--reviewer`，审查角色会沿用开发角色的模型和思考等级。
+这里省略了 `--reviewer` 和 `--scout`，审查和快查角色会沿用开发角色的模型和思考等级。
 你的扩展要兼容官方示例的 `agent`、`task`、`tasks`、`agentScope` 参数，以及 Markdown agent 文件格式。
 同一个环境只启用一个提供 `subagent` 工具的扩展。
 
@@ -50,7 +50,8 @@ PI_CODING_AGENT_DIR="$HOME/.pi-work/agent" \
 PI_TEAM_BIN_DIR="$HOME/bin" \
 bash install.sh \
   --frontdesk 'YOUR_PROVIDER/YOUR_DEEPSEEK_MODEL:max' \
-  --worker 'YOUR_PROVIDER/YOUR_GPT_MODEL:high'
+  --worker 'YOUR_PROVIDER/YOUR_GPT_MODEL:high' \
+  --scout 'YOUR_PROVIDER/YOUR_GPT_MODEL:low'
 
 PI_CODING_AGENT_DIR="$HOME/.pi-work/agent" "$HOME/bin/pi-team" --team-check
 PI_CODING_AGENT_DIR="$HOME/.pi-work/agent" "$HOME/bin/pi-team"
@@ -60,7 +61,7 @@ PI_CODING_AGENT_DIR="$HOME/.pi-work/agent" "$HOME/bin/pi-team"
 自定义 agent 目录需要自己的模型和凭证配置，启动时也要带同一个 `PI_CODING_AGENT_DIR`。
 你可以把这两个变量放进 shell 配置，把命令目录加入 PATH。
 
-通用规则仍然用 `~/.codex/AGENTS.md`，不会跟着 agent 目录走。没有这个文件，启动器就跳过它。
+通用规则是 agent 目录里的 `AGENTS.md`，会跟着 `PI_CODING_AGENT_DIR` 走。
 
 ## 更新
 
@@ -72,7 +73,8 @@ git pull --ff-only
 bash install.sh \
   --frontdesk 'YOUR_PROVIDER/YOUR_DEEPSEEK_MODEL:max' \
   --worker 'YOUR_PROVIDER/YOUR_GPT_MODEL:high' \
-  --reviewer 'YOUR_PROVIDER/YOUR_GPT_MODEL:xhigh'
+  --reviewer 'YOUR_PROVIDER/YOUR_GPT_MODEL:xhigh' \
+  --scout 'YOUR_PROVIDER/YOUR_GPT_MODEL:low'
 ```
 
 把路径和模型占位符换成你的。用了自定义目录，就带上原来的环境变量。
@@ -85,6 +87,7 @@ bash install.sh \
   --frontdesk 'YOUR_PROVIDER/YOUR_DEEPSEEK_MODEL:max' \
   --worker 'YOUR_PROVIDER/YOUR_GPT_MODEL:high' \
   --reviewer 'YOUR_PROVIDER/YOUR_GPT_MODEL:xhigh' \
+  --scout 'YOUR_PROVIDER/YOUR_GPT_MODEL:low' \
   --force
 ```
 
@@ -108,9 +111,11 @@ git diff --no-index -- "$HOME/.pi/agent/agents/gpt-reviewer.md" agents/gpt-revie
 有差异时，`git diff --no-index` 会返回 1，表示发现差异。这两条命令不会改文件。
 仓库里的 `model:` 是安装占位符。对比时也要看提示词正文，别只看模型一行。
 用了自定义 agent 目录，就把上面的默认路径换掉。
+旧 pi-desk 没有 `gpt-scout`，安装器会新建它。
 
 确认你要使用仓库版本后，运行上一节带 `--force` 的完整安装命令。
 安装器会先备份同名角色。**旧 pi-desk 如果也调用这些角色，之后会读到更新后的版本。**
+旧 pi-desk 启动器自己传入 `~/.codex` 下的 `AGENTS.md` 不受影响，但 pi-team 不再读取这个文件。
 已有 subagent 扩展仍会保留。迁移后先用 `pi-team --team-check` 查本地文件，再跑一次只读任务。
 
 ## 卸载
@@ -122,11 +127,11 @@ rm "$HOME/.local/bin/pi-team"
 rm -r "$HOME/.pi/agent/pi-team"
 ```
 
-两个 GPT 角色和 subagent 扩展可能还在供旧 pi-desk 或其他工作流使用。还在用，就保留。
+三个 GPT 角色和 subagent 扩展可能还在供旧 pi-desk 或其他工作流使用。还在用，就保留。
 确认不再使用时，再删除这些共享文件：
 
 ```bash
-rm "$HOME/.pi/agent/agents/gpt-worker.md" "$HOME/.pi/agent/agents/gpt-reviewer.md"
+rm "$HOME/.pi/agent/agents/gpt-worker.md" "$HOME/.pi/agent/agents/gpt-reviewer.md" "$HOME/.pi/agent/agents/gpt-scout.md"
 rm -r "$HOME/.pi/agent/extensions/subagent"
 ```
 

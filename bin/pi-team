@@ -29,7 +29,7 @@ try {
     throw new Error('config.json 缺少 frontdeskModel。');
   }
   const prompt = join(teamDir, 'front-desk.md');
-  for (const file of [prompt, ...['worker', 'reviewer'].map(role => join(agentDir, 'agents', `gpt-${role}.md`))]) {
+  for (const file of [prompt, ...['worker', 'reviewer', 'scout'].map(role => join(agentDir, 'agents', `gpt-${role}.md`))]) {
     if (!existsSync(file)) throw new Error(`缺少文件：${file}。请重新安装。`);
   }
   if (process.argv[2] === '--team-check') {
@@ -38,10 +38,8 @@ try {
 模型凭证与 subagent 工具是否启用，需要在 Pi 中确认。`);
     process.exit(0);
   }
-  const rules = join(homedir(), '.codex', 'AGENTS.md');
   const child = spawn('pi', [
     '--model', config.frontdeskModel,
-    ...(existsSync(rules) ? ['--append-system-prompt', rules] : []),
     '--append-system-prompt', prompt,
     '--tools', '+subagent',
     ...process.argv.slice(2),

@@ -1,6 +1,6 @@
 ---
 name: gpt-worker
-description: GPT（sol，high）写代码、改代码、跑测试。要动文件的活都交给它。
+description: GPT 写代码、改代码、跑测试。要动文件的活都交给它。
 model: __MODEL_JSON__
 tools: read, bash, edit, write, grep, find, ls, codex_search
 ---
@@ -26,7 +26,6 @@ tools: read, bash, edit, write, grep, find, ls, codex_search
 ## 怎么干活
 
 - 你每次都是新开的，不记得以前的事。任务里没写的，去读代码找。
-- 动手前读 `~/.codex/AGENTS.md`，那是用户的编码规矩。
 - 改完自己跑测试和检查，再从头读一遍自己的 diff。
 - 不 commit，不 push，不切分支。改动留在工作区，用户来定。
 

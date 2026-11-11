@@ -11,8 +11,10 @@ flowchart TD
     User[你] -->|说需求| Front[DeepSeek 前台]
     Front -->|笔记、明确的小改动| Small[自己处理并检查]
     Front -->|开发、修 bug、测试| Worker[gpt-worker]
-    Front -->|查代码、审方案、审改动| Reviewer[gpt-reviewer]
+    Front -->|快查事实| Scout[gpt-scout]
+    Front -->|审方案、审改动、要判断的问题| Reviewer[gpt-reviewer]
     Worker -->|改动和验证结果| Front
+    Scout -->|答案和出处| Front
     Reviewer -->|结论和证据| Front
     Small -->|结果| Front
     Front -->|核对后汇报| User
@@ -20,12 +22,13 @@ flowchart TD
 
 - 前台自己记笔记、读文件、跑命令。怎么改已经说清楚的小改动，也由它做。
 - 需要设计和实现的活，交给 `gpt-worker`。
-- 查代码、审方案、审改动，交给 `gpt-reviewer`。
+- 一句话能答的事实问题：在哪、有几处、取的哪个值，交给 `gpt-scout`。
+- 审方案、审改动、要判断的问题，交给 `gpt-reviewer`。
 - 前台给你出方案前，会先找 GPT 商量。最多两轮；传话和一眼就清楚的小活除外。
 - 每个 GPT 子任务都是新会话。前台要重新交代你的原话、目标、背景和文件路径。
 
 这些分工靠提示词引导。实际派任务用的是 Pi 的 `subagent` 工具。
-`pi-team` 是项目名和启动命令。两个角色保留 `gpt-worker`、`gpt-reviewer` 这两个名字，提示词里也用这两个名字。
+`pi-team` 是项目名和启动命令。三个角色保留 `gpt-worker`、`gpt-scout`、`gpt-reviewer` 这三个名字，提示词里也用这三个名字。
 
 ## 给任务
 
@@ -40,7 +43,7 @@ flowchart TD
 角色共享工作区，别同时改同一个文件。需要改同一文件时，让前台排队执行。
 多人改完后，再让 reviewer 看一次合起来的 `git diff`。
 
-reviewer 的工具里没有 `edit/write`，但有 `bash`。只读是提示词要求，不能当作沙箱。
+scout 和 reviewer 的工具里没有 `edit/write`，但有 `bash`。只读是提示词要求，不能当作沙箱。
 子任务和审查都花你自己的模型额度，用量不一定计入主会话汇总。
 
 ## 常用命令
@@ -84,25 +87,24 @@ pi-team --tools 'read,bash,subagent'
 | 前台模型 | `~/.pi/agent/pi-team/config.json` | `frontdeskModel` |
 | 开发模型 | `~/.pi/agent/agents/gpt-worker.md` | 文件顶部的 `model:` |
 | 审查模型 | `~/.pi/agent/agents/gpt-reviewer.md` | 文件顶部的 `model:` |
+| 快查模型 | `~/.pi/agent/agents/gpt-scout.md` | 文件顶部的 `model:` |
 | 前台分工 | `~/.pi/agent/pi-team/front-desk.md` | 你自己的提示词 |
 
-模型标识用 `pi --list-models` 查。写成 `provider/model`，需要时加 `:high`、`:xhigh` 或 `:max`。
+模型标识用 `pi --list-models` 查。写成 `provider/model`，需要时加 `:low`、`:high`、`:xhigh` 或 `:max`。
 可用的思考等级由模型决定。
 
-通用规则是可选的。你有规则，就放在 `~/.codex/AGENTS.md`。
-启动器只在文件存在时把它交给前台；原版 GPT 提示词也会让角色去读这个路径。
-仓库不附带作者的个人规则，你不用为了启动而建空文件。
+通用规则放 `~/.pi/agent/AGENTS.md`（用了自定义目录就在那个目录里）。Pi 自动加载，前台和三个 GPT 角色都读得到。仓库不附带作者的个人规则。
 
 你改过安装后的提示词，再运行安装器时会遇到内容冲突。处理方法见[更新与迁移](maintenance.md#更新)。
 
-## 加第三位搭档
+## 加新搭档
 
-当前提示词明确要求前台只用两个 GPT 角色。你只加一个文件，前台不会自动换分工。
+当前提示词明确要求前台只用三个 GPT 角色。你只加一个文件，前台不会自动换分工。
 
 要加新角色，你需要做两件事：
 
 1. 在 `~/.pi/agent/agents/` 新建 Markdown 文件，填写独立的 `name`、`description`、`model`、`tools` 和角色提示词。
-2. 改你已安装的 `~/.pi/agent/pi-team/front-desk.md`。调整“只用这两个 GPT agent”的限制，写清新角色做什么、何时调用。
+2. 改你已安装的 `~/.pi/agent/pi-team/front-desk.md`。调整“只用这三个 GPT agent”的限制，写清新角色做什么、何时调用。
 
 换前台模型时，也记得调整你自己的提示词里对 DeepSeek 的描述。
 
@@ -115,5 +117,5 @@ pi-team --tools 'read,bash,subagent'
 主会话的 CLI 参数不会全部传给它，例如临时加的 `-e` 扩展。
 如果模型依赖提供商扩展，要把扩展装在子进程也能加载的位置。
 
-两个 GPT 角色的工具清单里有 `codex_search`，仓库不提供这个工具。
+worker 和 reviewer 的工具清单里有 `codex_search`，scout 没有。仓库不提供这个工具。
 你要搜网页，就另装兼容工具，并让子进程也能加载。代码读写和 shell 工具由 Pi 提供。

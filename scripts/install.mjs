@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const help = `用法：bash install.sh --frontdesk MODEL --worker MODEL [--reviewer MODEL]
+const help = `用法：bash install.sh --frontdesk MODEL --worker MODEL [--reviewer MODEL] [--scout MODEL]
 
 MODEL 是 pi --list-models 中的 provider/model，可带 :high、:xhigh 等后缀。
---reviewer 默认与 --worker 相同。
+--reviewer 和 --scout 默认与 --worker 相同。
 --skip-subagent  复用通过其他路径或包安装的兼容 subagent 扩展
 --force          先备份，再覆盖 pi-team 自己的配置与角色文件
 
@@ -24,7 +24,7 @@ function main() {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (['--force', '--skip-subagent'].includes(arg)) options[arg] = true;
-    else if (['--frontdesk', '--worker', '--reviewer'].includes(arg)) {
+    else if (['--frontdesk', '--worker', '--reviewer', '--scout'].includes(arg)) {
       const value = args[++i];
       if (!value || value.startsWith('--') || /[\r\n\0]/.test(value)) throw new Error(`${arg} 需要一个单行模型标识。`);
       options[arg] = value;
@@ -50,7 +50,7 @@ function main() {
     [join(teamDir, 'config.json'), JSON.stringify({ frontdeskModel: options['--frontdesk'] }, null, 2) + '\n'],
     [join(teamDir, 'front-desk.md'), read('front-desk.md')],
   ]);
-  for (const role of ['worker', 'reviewer']) {
+  for (const role of ['worker', 'reviewer', 'scout']) {
     const model = options[`--${role}`] || options['--worker'];
     files.set(join(agentDir, 'agents', `gpt-${role}.md`), read(`agents/gpt-${role}.md`).replace('__MODEL_JSON__', JSON.stringify(model)));
   }

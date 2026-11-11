@@ -17,7 +17,7 @@ bash -n install.sh
 - 全新安装、重复安装，以及提示词正文是否保持原样。
 - 文件冲突能否在写入前拦住，`--force` 是否先备份。
 - 已有 subagent 扩展是否保留，`--skip-subagent` 是否生效。
-- 模型参数检查，以及 reviewer 省略时是否沿用 worker。
+- 模型参数检查，以及 reviewer 和 scout 省略时是否沿用 worker。
 - 启动时是否保留项目目录、参数原文、模型选择和 Pi 退出状态。
 - 本地检查、帮助，以及缺少配置时的报错。
 
@@ -35,17 +35,18 @@ bash -n install.sh
 | [bin/pi-team](../bin/pi-team) | 读配置，加载提示词，启动 Pi |
 | [tests/install.test.mjs](../tests/install.test.mjs) | 用隔离目录检查安装和启动行为 |
 
-## 原版提示词
+## 提示词
 
 这个项目把作者原来的 `pi-desk` 工作流打包，方便其他 Pi 用户安装。
-下面三份文件保留原版提示词正文：
+下面四份提示词从作者的 `pi-desk` 提示词起步，后来加了第三个角色和记忆交接：
 
 - [front-desk.md](../front-desk.md)
 - [agents/gpt-worker.md](../agents/gpt-worker.md)
 - [agents/gpt-reviewer.md](../agents/gpt-reviewer.md)
+- [agents/gpt-scout.md](../agents/gpt-scout.md)
 
-两个 agent 只有顶部的 `model:` 改成安装占位符。安装时填入你传的模型标识。
-分工、措辞和授权规则都保留。你要自定义工作流，可以改自己安装后的副本。
+三个 agent 顶部的 `model:` 是安装占位符。安装时填入你传的模型标识。
+你要自定义工作流，可以改自己安装后的副本。
 
 提示词里的模型评价来自作者原来的用法，不保证哪个模型永远更可靠。
 你判断任务有没有做好，还是要看代码、测试和实际结果。

@@ -1,6 +1,6 @@
 # pi-team
 
-给 Pi 加一个前台和两位模型搭档。你跟 DeepSeek 说需求，GPT 负责开发和审查。
+给 Pi 加一个前台和三位模型搭档。你跟 DeepSeek 说需求，GPT 负责开发、快查和审查。
 
 ## 三步用起来
 
@@ -10,7 +10,7 @@
 - 在 Pi 里配好 DeepSeek、GPT 的提供商和凭证。你用自己的账号。
 - 用 `pi --list-models` 找模型标识。参数写成 `provider/model[:thinking]`，思考等级要选模型支持的。
 
-可选：你有通用规则，就放在 `~/.codex/AGENTS.md`。启动器只在文件存在时加载它。
+通用规则放 Pi 自己的 `~/.pi/agent/AGENTS.md`，Pi 会自动交给前台和每个 GPT 角色。
 
 **2. 安装 pi-team**
 
@@ -20,10 +20,11 @@ cd pi-team
 bash install.sh \
   --frontdesk 'YOUR_PROVIDER/YOUR_DEEPSEEK_MODEL:max' \
   --worker 'YOUR_PROVIDER/YOUR_GPT_MODEL:high' \
-  --reviewer 'YOUR_PROVIDER/YOUR_GPT_MODEL:xhigh'
+  --reviewer 'YOUR_PROVIDER/YOUR_GPT_MODEL:xhigh' \
+  --scout 'YOUR_PROVIDER/YOUR_GPT_MODEL:low'
 ```
 
-把占位符换成你的模型标识。省略 `--reviewer` 时，沿用 `--worker` 的完整配置。
+把占位符换成你的模型标识。省略 `--reviewer` 或 `--scout` 时，沿用 `--worker` 的完整配置。scout 用来快查，适合设低思考等级，回答更快。
 
 > 已有同名 agent 且内容不同时，安装会在写入前停止。加 `--force` 会先备份，再覆盖。
 > 已有 subagent 扩展不管加不加 `--force` 都不会被覆盖。复用其他路径的扩展，见[安装与维护](docs/maintenance.md)。
@@ -42,10 +43,10 @@ pi-team
 
 ## 用之前必须知道
 
-- **提示词不是沙箱。** 前台能改文件。reviewer 没有 `edit/write`，但有 `bash`，不能保证只读。
+- **提示词不是沙箱。** 前台能改文件。scout 和 reviewer 没有 `edit/write`，但有 `bash`，不能保证只读。
 - 角色共享工作区。别让多个角色同时改同一个文件。
 - 提示词要求 worker 不 commit、不 push。前台做这些操作前会问你。
-- 两个 GPT 角色用到的 `codex_search` 不在本仓库里。要搜网页，你得另装兼容工具。
+- worker 和 reviewer 用到的 `codex_search` 不在本仓库里。要搜网页，你得另装兼容工具。
 - 模型调用花你自己的额度。并行和审查都会增加调用。
 
 ## 先跑一个只读任务
@@ -65,11 +66,12 @@ pi-team
 | `~/.pi/agent/pi-team/front-desk.md` | 前台提示词 |
 | `~/.pi/agent/agents/gpt-worker.md` | 开发角色的提示词和模型 |
 | `~/.pi/agent/agents/gpt-reviewer.md` | 审查角色的提示词和模型 |
+| `~/.pi/agent/agents/gpt-scout.md` | 快查角色的提示词和模型 |
 
 ## 进阶
 
 - [怎么用](docs/usage.md)：分工、常用参数、改模型、加搭档。
 - [安装与维护](docs/maintenance.md)：扩展、自定义目录、更新、从 pi-desk 迁移、卸载。
-- [开发与来源](docs/development.md)：测试、原版提示词、上游代码和许可证。
+- [开发与来源](docs/development.md)：测试、提示词、上游代码和许可证。
 
 [MIT 许可证](LICENSE)

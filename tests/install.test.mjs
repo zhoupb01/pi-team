@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync, realpathSync } from 'node:fs';
-import { tmpdir, homedir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const models = ['--frontdesk', 'example/deepseek:max', '--worker', 'example/gpt:high', '--reviewer', 'example/gpt:xhigh'];
+const models = ['--frontdesk', 'example/deepseek:max', '--worker', 'example/gpt:high', '--reviewer', 'example/gpt:xhigh', '--scout', 'example/gpt:low'];
 
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'pi-team test 空格-'));
@@ -40,10 +40,9 @@ test('fresh install is self-contained, preserves prompt bodies, and is repeatabl
   ok(s.install());
   const config = JSON.parse(readFileSync(join(s.agent, 'pi-team/config.json')));
   assert.equal(config.frontdeskModel, 'example/deepseek:max');
-  for (const role of ['worker', 'reviewer']) {
+  for (const [role, model] of [['worker', 'example/gpt:high'], ['reviewer', 'example/gpt:xhigh'], ['scout', 'example/gpt:low']]) {
     const template = readFileSync(join(root, `agents/gpt-${role}.md`), 'utf8');
     const installed = readFileSync(join(s.agent, `agents/gpt-${role}.md`), 'utf8');
-    const model = role === 'worker' ? 'example/gpt:high' : 'example/gpt:xhigh';
     assert.equal(installed, template.replace('__MODEL_JSON__', JSON.stringify(model)));
   }
   assert.equal(readFileSync(join(s.agent, 'pi-team/front-desk.md'), 'utf8'), readFileSync(join(root, 'front-desk.md'), 'utf8'));
@@ -62,16 +61,30 @@ test('launcher preserves cwd, literal arguments, model choice and Pi exit status
   const result = s.launch(['--print', message, '--session', 'name with spaces']);
   ok(result);
   const output = JSON.parse(result.stdout);
-  const rules = join(homedir(), '.codex', 'AGENTS.md');
   assert.deepEqual(output.args, [
     '--model', model,
-    ...(existsSync(rules) ? ['--append-system-prompt', rules] : []),
     '--append-system-prompt', join(s.agent, 'pi-team/front-desk.md'),
     '--tools', '+subagent', '--print', message, '--session', 'name with spaces',
   ]);
   assert.equal(output.cwd, realpathSync(s.project));
   assert.equal(output.agentDir, s.agent);
   assert.equal(s.launch([], { FAKE_PI_EXIT: '7' }).status, 7);
+});
+
+test('launcher requires all three role files for launch and local checks', t => {
+  const s = setup(t);
+  ok(s.install());
+  for (const role of ['worker', 'reviewer', 'scout']) {
+    const file = join(s.agent, `agents/gpt-${role}.md`);
+    const content = readFileSync(file, 'utf8');
+    rmSync(file);
+    for (const args of [[], ['--team-check']]) {
+      const result = s.launch(args);
+      assert.equal(result.status, 1);
+      assert.ok(result.stderr.includes(`缺少文件：${file}`));
+    }
+    writeFileSync(file, content);
+  }
 });
 
 test('collision is detected before writes; force backs up customized files', t => {
@@ -113,10 +126,12 @@ test('missing models, multiline values and partial extension directories fail be
   assert.equal(existsSync(join(s.bin, 'pi-team')), false);
 });
 
-test('reviewer defaults to worker; launcher reports missing configuration and supports standalone help', t => {
+test('reviewer and scout default to worker; launcher reports missing configuration and supports standalone help', t => {
   const s = setup(t);
   ok(s.run('bash', [join(root, 'install.sh'), '--frontdesk', 'provider/front', '--worker', 'provider/worker:high']));
-  assert.match(readFileSync(join(s.agent, 'agents/gpt-reviewer.md'), 'utf8'), /model: "provider\/worker:high"/);
+  for (const role of ['reviewer', 'scout']) {
+    assert.match(readFileSync(join(s.agent, `agents/gpt-${role}.md`), 'utf8'), /model: "provider\/worker:high"/);
+  }
   rmSync(join(s.agent, 'pi-team/config.json'));
   assert.equal(s.launch().status, 1);
   ok(s.launch(['--team-help']));
